@@ -1,0 +1,15 @@
+Scalar := 100;
+Percentage := 20%;
+
+.operation-abuse-test {
+    height: 100% - 12%;
+    width: 3 * 100px + 600px;
+}
+
+ScreenWidth := 1280px;
+
+.operation-abuse-with-vars-test {
+    height: Scalar * Percentage;
+    width: ScreenWidth * Percentage + Scalar;
+}
+

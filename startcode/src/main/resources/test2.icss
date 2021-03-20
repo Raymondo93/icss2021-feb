@@ -1,0 +1,13 @@
+TestColor := #ff0000;
+Condition := TRUE;
+
+.var-assignment-and-use-in-if-statement {
+    color: TestColor;
+    if[Condition] {
+        ScreenWidth := 1920px;
+        width: ScreenWidth;
+    } else {
+        ScreenHeight := 768px;
+        height: ScreenHeight;
+    }
+}

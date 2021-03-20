@@ -33,6 +33,11 @@ public class Declaration extends ASTNode {
 		return children;
 	}
 	@Override
+	public ASTNode removeChild(ASTNode child) {
+		this.getChildren().remove(child);
+		return this;
+	}
+	@Override
 	public ASTNode addChild(ASTNode child) {
 		if(child instanceof PropertyName) {
 			property = (PropertyName) child;

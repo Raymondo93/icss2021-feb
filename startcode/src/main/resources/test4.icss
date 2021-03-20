@@ -1,0 +1,5 @@
+Color := #facade;
+
+#facade {
+    color: #facade;
+}
