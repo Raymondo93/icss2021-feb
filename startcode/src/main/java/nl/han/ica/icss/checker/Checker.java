@@ -68,6 +68,8 @@ public class Checker {
                 node.setError("Could not find initialization of variable " + ((VariableReference) node).name);
             }
         } else if (node instanceof Operation) {
+//            System.out.println("hier komt die niet als goed is " + ((Operation) node).lhs + " +/*/- " + ((Operation) node).rhs);
+//            this.checkOperation((Operation) node, localVariablesListList);
             this.checkOperationValues((Operation) node, localVariablesListList);
         } else if (node instanceof Declaration) {
             this.checkDeclarationValueOnProperty((Declaration) node, localVariablesListList);
@@ -97,6 +99,32 @@ public class Checker {
             }
             checkTreeNode(child, localVariablesListList);
         }
+    }
+
+    private void checkOperation(Operation node, IHANLinkedList<IHANLinkedList<HashMap<String, ExpressionType>>> localVariableList) {
+        if (node.rhs instanceof Operation) {
+            ExpressionType multiplyValue;
+            if (node instanceof MultiplyOperation) {
+
+            }
+        }
+    }
+
+    private ExpressionType getExpressionTypeOfMultiplyOperation(Expression lhs, Expression rhs, IHANLinkedList<IHANLinkedList<HashMap<String, ExpressionType>>> localVariableList) {
+        if (!(rhs instanceof Operation)) {
+            if (getExpressionType(lhs, localVariableList).equals(getExpressionType(rhs, localVariableList))) {
+                return getExpressionType(lhs, localVariableList);
+            }
+        } else {
+            if (rhs instanceof MultiplyOperation) {
+                ExpressionType rhsType = getExpressionTypeOfMultiplyOperation(((MultiplyOperation) rhs).lhs, ((MultiplyOperation) rhs).rhs, localVariableList);
+
+            }
+            if (getExpressionType(lhs, localVariableList).equals(getExpressionType(rhs,localVariableList))) {
+                return getExpressionType(lhs, localVariableList);
+            }
+        }
+        return null;
     }
 
     /**
@@ -212,6 +240,8 @@ public class Checker {
         if (node.expression instanceof Operation) return;
         if (!propertyBusinessRulesList.get(node.property.name).contains(getExpressionType(node.expression, localVarsList))) {
             node.setError("The value of property " + node.property.name + " does not have a valid expression.");
+        } else if (getExpressionType(node.expression).equals(ExpressionType.SCALAR)) {
+            node.setError("The value of " + node.property.name + " cannot be a scalar.");
         }
     }
 

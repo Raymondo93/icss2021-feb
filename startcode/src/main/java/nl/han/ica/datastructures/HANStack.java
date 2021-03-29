@@ -38,4 +38,15 @@ public class HANStack<T> implements IHANStack<T> {
         return list.getSize();
     }
 
+    @Override
+    public boolean isEmpty() {
+        return list.isEmpty();
+    }
+
+    @Override
+    public String toString() {
+        return "HANStack{" +
+                "list=" + list.toString() +
+                '}';
+    }
 }

@@ -23,4 +23,11 @@ public interface IHANStack<T> {
      * @return size of stack
      */
     int getSize();
+
+    /**
+     * @return isEmpty
+     */
+    boolean isEmpty();
+
+    String toString();
 }

@@ -9,6 +9,13 @@ public class HANQueue<T> implements IHANQueue<T> {
     }
 
     @Override
+    public String toString() {
+        return "HANQueue{" +
+                "list=" + list.toString() +
+                '}';
+    }
+
+    @Override
     public void clear() {
         list.clear();
     }

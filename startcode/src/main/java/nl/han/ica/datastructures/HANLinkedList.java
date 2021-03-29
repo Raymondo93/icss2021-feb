@@ -3,7 +3,6 @@ package nl.han.ica.datastructures;
 import java.util.Iterator;
 
 public class HANLinkedList<T> implements IHANLinkedList<T> {
-
     private Node<T> headerNode;
     private int size = 0;
     private int modCount = 0;
@@ -122,7 +121,24 @@ public class HANLinkedList<T> implements IHANLinkedList<T> {
         this.modCount = modCount;
     }
 
+    @Override
+    public String toString() {
+        return "HANLinkedList{" +
+                "headerNode=" + headerNode.toString() +
+                ", size=" + size +
+                ", modCount=" + modCount +
+                '}';
+    }
+
+
     private static class Node<T> {
+        @Override
+        public String toString() {
+            return "Node{" +
+                    "data=" + data +
+                    ", next=" + next +
+                    '}';
+        }
 
         private T data;
         private Node<T> next;

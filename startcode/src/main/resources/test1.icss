@@ -9,7 +9,7 @@ Color2 := Color;
     color: Color;
     width: Pixel;
     height: Percentage;
-    background-color: Scalar;
+    background-color: Color;
     width: Extra;
 }
 

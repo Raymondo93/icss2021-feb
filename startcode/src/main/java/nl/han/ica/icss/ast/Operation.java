@@ -26,4 +26,16 @@ public abstract class Operation extends Expression {
         }
         return this;
     }
+
+    public void setLhs(Expression expression) {
+        lhs = expression;
+    }
+
+    public void setRhs(Expression expression) {
+        rhs = expression;
+    }
+
+    public boolean isNestedOperation() {
+        return rhs instanceof Operation;
+    }
 }
