@@ -56,7 +56,7 @@ selector: (idSelector | tagSelector | classSelector | variableAssignment);
 idSelector: ID_IDENT;
 classSelector: CLASS_IDENT;
 tagSelector: LOWER_IDENT;
-variableAssignment:  variableReference ASSIGNMENT_OPERATOR (literal | variableReference ) SEMICOLON;
+variableAssignment:  variableReference ASSIGNMENT_OPERATOR (literal | variableReference | operation ) SEMICOLON;
 styleRule: selector declaration;
 declaration: OPEN_BRACE (styleBlock | ifClause | variableAssignment)* CLOSE_BRACE;
 styleBlock: propertyName COLON expression SEMICOLON;

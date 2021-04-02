@@ -13,9 +13,6 @@ import nl.han.ica.icss.ast.selectors.TagSelector;
 public class Generator {
 
 	public String generate(AST ast) {
-		System.out.println("ja ik vind je wel heel lief");
-		System.out.println(ast.root.toString());
-		System.out.println("maar doe het toch ff lekker niet");
         String styleSheet =  "";
 		for (ASTNode node: ast.root.getChildren()) {
 			if (node instanceof Stylerule) {

@@ -1,7 +1,7 @@
 package nl.han.ica.icss.checker;
 
-import nl.han.ica.datastructures.HANLinkedList;
-import nl.han.ica.datastructures.IHANLinkedList;
+import jdk.jfr.Experimental;
+import nl.han.ica.datastructures.*;
 import nl.han.ica.icss.ast.*;
 import nl.han.ica.icss.ast.literals.*;
 import nl.han.ica.icss.ast.operations.AddOperation;
@@ -9,6 +9,7 @@ import nl.han.ica.icss.ast.operations.MultiplyOperation;
 import nl.han.ica.icss.ast.operations.SubtractOperation;
 import nl.han.ica.icss.ast.types.ExpressionType;
 
+import javax.management.openmbean.OpenDataException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,36 +57,32 @@ public class Checker {
      * Recursive function which checks the tree node
      * @param node => ASTNode which has to be checked
      */
-    private void checkTreeNode(ASTNode node, IHANLinkedList<IHANLinkedList<HashMap<String, ExpressionType>>> localVariablesListList) {
+    private void checkTreeNode(ASTNode node, IHANLinkedList<IHANLinkedList<HashMap<String, ExpressionType>>> localVariablesList) {
         if (node instanceof VariableAssignment) {
-            if (this.checkIfVariableIsNew(((VariableAssignment) node).name, localVariablesListList)) {
-                this.setVariableInList((VariableAssignment) node, localVariablesListList.getFirst());
+            if (this.checkIfVariableIsNew(((VariableAssignment) node).name, localVariablesList)) {
+                this.setVariableInList((VariableAssignment) node, localVariablesList.getFirst());
             } else {
-                this.updateLocalVariable((VariableAssignment) node, localVariablesListList);
+                this.updateLocalVariable((VariableAssignment) node, localVariablesList);
             }
         } else if (node instanceof VariableReference) {
-            if (this.checkIfVariableIsNew((VariableReference) node, localVariablesListList)) {
+            if (this.checkIfVariableIsNew((VariableReference) node, localVariablesList)) {
                 node.setError("Could not find initialization of variable " + ((VariableReference) node).name);
             }
-        } else if (node instanceof Operation) {
-//            System.out.println("hier komt die niet als goed is " + ((Operation) node).lhs + " +/*/- " + ((Operation) node).rhs);
-//            this.checkOperation((Operation) node, localVariablesListList);
-            this.checkOperationValues((Operation) node, localVariablesListList);
         } else if (node instanceof Declaration) {
-            this.checkDeclarationValueOnProperty((Declaration) node, localVariablesListList);
+            this.checkDeclarationValueOnProperty((Declaration) node, localVariablesList);
         } else if (node instanceof IfClause) {
             this.checkConditionalExpressionType((IfClause) node);
-            localVariablesListList.addFirst(new HANLinkedList<>());
+            localVariablesList.addFirst(new HANLinkedList<>());
             for (ASTNode bodyNode: ((IfClause) node).body) {
-                checkTreeNode(bodyNode, localVariablesListList);
+                checkTreeNode(bodyNode, localVariablesList);
             }
-            localVariablesListList.removeFirst();
+            localVariablesList.removeFirst();
             if (((IfClause) node).elseClause != null) {
-                localVariablesListList.addFirst(new HANLinkedList<>());
+                localVariablesList.addFirst(new HANLinkedList<>());
                 for (ASTNode elseClauseBodyNode: ((IfClause) node).elseClause.body) {
-                    checkTreeNode(elseClauseBodyNode, localVariablesListList);
+                    checkTreeNode(elseClauseBodyNode, localVariablesList);
                 }
-                localVariablesListList.removeFirst();
+                localVariablesList.removeFirst();
             }
         }
 
@@ -97,35 +94,10 @@ public class Checker {
             } else if (child instanceof IfClause){
                 continue;
             }
-            checkTreeNode(child, localVariablesListList);
+            checkTreeNode(child, localVariablesList);
         }
     }
 
-    private void checkOperation(Operation node, IHANLinkedList<IHANLinkedList<HashMap<String, ExpressionType>>> localVariableList) {
-        if (node.rhs instanceof Operation) {
-            ExpressionType multiplyValue;
-            if (node instanceof MultiplyOperation) {
-
-            }
-        }
-    }
-
-    private ExpressionType getExpressionTypeOfMultiplyOperation(Expression lhs, Expression rhs, IHANLinkedList<IHANLinkedList<HashMap<String, ExpressionType>>> localVariableList) {
-        if (!(rhs instanceof Operation)) {
-            if (getExpressionType(lhs, localVariableList).equals(getExpressionType(rhs, localVariableList))) {
-                return getExpressionType(lhs, localVariableList);
-            }
-        } else {
-            if (rhs instanceof MultiplyOperation) {
-                ExpressionType rhsType = getExpressionTypeOfMultiplyOperation(((MultiplyOperation) rhs).lhs, ((MultiplyOperation) rhs).rhs, localVariableList);
-
-            }
-            if (getExpressionType(lhs, localVariableList).equals(getExpressionType(rhs,localVariableList))) {
-                return getExpressionType(lhs, localVariableList);
-            }
-        }
-        return null;
-    }
 
     /**
      * Author: Raymond de Bruine
@@ -135,15 +107,19 @@ public class Checker {
      * @param localVariables => List with local variables
      */
     private void updateLocalVariable(VariableAssignment node, IHANLinkedList<IHANLinkedList<HashMap<String, ExpressionType>>> localVariables) {
-        for (int i = 0; i < localVariables.getSize(); ++i) {
-            for (int j = 0; j < localVariables.get(i).getSize(); ++j) {
-                if (localVariables.get(i).get(j).containsKey(node.name.name)) {
-                    localVariables.get(i).get(j).put(node.name.name, getExpressionType(node.expression, localVariables));
-                    return;
+        try {
+            for (int i = 0; i < localVariables.getSize(); ++i) {
+                for (int j = 0; j < localVariables.get(i).getSize(); ++j) {
+                    if (localVariables.get(i).get(j).containsKey(node.name.name)) {
+                        localVariables.get(i).get(j).put(node.name.name, getExpressionType(node.expression, localVariables));
+                        return;
+                    }
                 }
             }
+            updateGlobalVariable(node);
+        } catch (Exception e) {
+            node.setError(e.getMessage());
         }
-        updateGlobalVariable(node);
     }
 
     /**
@@ -153,10 +129,14 @@ public class Checker {
      * @param node => The updated variable assignment
      */
     private void updateGlobalVariable(VariableAssignment node) {
-        for (int i = 0; i < globalVariablesList.getSize(); ++i) {
-            if (globalVariablesList.get(i).containsKey(node.name.name)) {
-                globalVariablesList.get(i).put(node.name.name, getExpressionType(node.expression));
+        try {
+            for (int i = 0; i < globalVariablesList.getSize(); ++i) {
+                if (globalVariablesList.get(i).containsKey(node.name.name)) {
+                    globalVariablesList.get(i).put(node.name.name, getExpressionType(node.expression));
+                }
             }
+        } catch (Exception e) {
+            node.setError(e.getMessage());
         }
     }
 
@@ -193,12 +173,21 @@ public class Checker {
      * Author: Raymond de Bruine
      * Date: 08-03-2021
      * Place variable in the list
-     * @param node => The variable to be inserted
+     * @param node => The variable
      * @param variableList => The list with variables
      */
     private void setVariableInList(VariableAssignment node, IHANLinkedList<HashMap<String, ExpressionType>> variableList) {
         HashMap<String, ExpressionType> map = new HashMap<>();
-        map.put(node.name.name, getExpressionType(node.expression));
+        try {
+            if (node.expression instanceof Operation) {
+                ExpressionType type = getExpressionTypeOfOperation((Operation) node.expression, new HANLinkedList<>());
+                map.put(node.name.name, type);
+            } else {
+                map.put(node.name.name, getExpressionType(node.expression));
+            }
+        } catch (Exception e) {
+            node.setError(e.getMessage());
+        }
         variableList.addFirst(map);
     }
 
@@ -225,8 +214,12 @@ public class Checker {
      * @param node => The IfClause node
      */
     private void checkConditionalExpressionType(IfClause node) {
-        if (getExpressionType(node.conditionalExpression) != ExpressionType.BOOL) {
-            node.setError("A conditional expression in a if statement is not of type 'Boolean'!");
+        try {
+            if (getExpressionType(node.conditionalExpression) != ExpressionType.BOOL) {
+                node.setError("A conditional expression in a if statement is not of type 'Boolean'!");
+            }
+        } catch (Exception e) {
+            node.setError(e.getMessage());
         }
     }
 
@@ -237,11 +230,22 @@ public class Checker {
      * @param node => The Declaration node.
      */
     private void checkDeclarationValueOnProperty(Declaration node, IHANLinkedList<IHANLinkedList<HashMap<String, ExpressionType>>> localVarsList) {
-        if (node.expression instanceof Operation) return;
-        if (!propertyBusinessRulesList.get(node.property.name).contains(getExpressionType(node.expression, localVarsList))) {
-            node.setError("The value of property " + node.property.name + " does not have a valid expression.");
-        } else if (getExpressionType(node.expression).equals(ExpressionType.SCALAR)) {
-            node.setError("The value of " + node.property.name + " cannot be a scalar.");
+        try {
+            ExpressionType type;
+            if (node.expression instanceof Operation) {
+                type = getExpressionTypeOfOperation((Operation) node.expression, localVarsList);
+            } else {
+                type = getExpressionType(node.expression, localVarsList);
+            }
+            if (!propertyBusinessRulesList.get(node.property.name).contains(type)) {
+                node.setError("The value of property " + node.property.name + " does not have a valid expressionType.");
+            } else {
+                if (type.equals(ExpressionType.SCALAR)) {
+                    node.setError("The value of " + node.property.name + " cannot be a scalar.");
+                }
+            }
+        } catch (Exception e) {
+            node.setError(e.getMessage());
         }
     }
 
@@ -252,7 +256,7 @@ public class Checker {
      * @param expression => Expression
      * @return => Type of Expression
      */
-    private ExpressionType getExpressionType(Expression expression) {
+    private ExpressionType getExpressionType(Expression expression) throws Exception {
         if (expression instanceof BoolLiteral) {
             return ExpressionType.BOOL;
         } else if (expression instanceof ColorLiteral) {
@@ -281,7 +285,7 @@ public class Checker {
      * @param expression => Expression
      * @return => Type of Expression
      */
-    private ExpressionType getExpressionType(Expression expression, IHANLinkedList<IHANLinkedList<HashMap<String, ExpressionType>>> localVarsList) {
+    private ExpressionType getExpressionType(Expression expression, IHANLinkedList<IHANLinkedList<HashMap<String, ExpressionType>>> localVarsList) throws Exception {
         if (expression instanceof BoolLiteral) {
             return ExpressionType.BOOL;
         } else if (expression instanceof ColorLiteral) {
@@ -308,16 +312,6 @@ public class Checker {
             }
         }
         return ExpressionType.UNDEFINED;
-    }
-
-
-
-    private void checkOperationValues(Operation operation, IHANLinkedList<IHANLinkedList<HashMap<String, ExpressionType>>> localVariableList) {
-        try {
-            getExpressionTypeOfOperation(operation, localVariableList);
-        } catch (Exception e) {
-            operation.setError(e.getMessage());
-        }
     }
 
     private ExpressionType getExpressionTypeOfOperation(Operation operation, IHANLinkedList<IHANLinkedList<HashMap<String, ExpressionType>>> localVariableList) throws Exception {
@@ -375,7 +369,7 @@ public class Checker {
     /**
      * Author: Raymond de Bruine
      * Date: 10-03-2021
-     * Function: Business rules for using expresssion types with certain properties
+     * Function: Business rules for using expression types with certain properties
      */
     private void setPropertyExpressionTypes() {
         propertyBusinessRulesList.put("background-color", new ArrayList<>());

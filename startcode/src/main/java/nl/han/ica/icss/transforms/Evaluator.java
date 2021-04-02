@@ -20,11 +20,11 @@ public class Evaluator implements Transform {
     private static IHANLinkedList<HashMap<String, Literal>> globalVariableValues;
 
     public Evaluator() {
-        globalVariableValues = new HANLinkedList<>();
     }
 
     @Override
     public void apply(AST ast) {
+        globalVariableValues = new HANLinkedList<>();
         ast.setRoot(generateAST(ast));
     }
 
@@ -44,7 +44,7 @@ public class Evaluator implements Transform {
 
                     if (child instanceof IfClause) {
                         try {
-                            ArrayList<ASTNode> ifClauseBody = this.evaluateIfStatement(rule, (IfClause) child, localVariables);
+                            ArrayList<ASTNode> ifClauseBody = this.evaluateIfStatement((IfClause) child, localVariables);
                             for (ASTNode node : ifClauseBody) {
                                 rule.addChild(this.getChild(node, localVariables));
                             }
@@ -87,10 +87,16 @@ public class Evaluator implements Transform {
             for (int j = 0; j < localVariables.get(i).getSize(); ++j) {
                 if (localVariables.get(i).get(j).containsKey(node.name.name)) {
                     try {
-                        localVariables.get(i).get(j).put(node.name.name, getLiteral(node.expression));
+                        if (node.expression instanceof Operation) {
+                            localVariables.get(i).get(j).put(node.name.name, handleOperation((Operation) node.expression, localVariables));
+                        } else if (node.expression instanceof VariableReference) {
+                            localVariables.get(i).get(j).put(node.name.name, getVariableReferenceValue(node.name, localVariables));
+                        } else {
+                            localVariables.get(i).get(j).put(node.name.name, getLiteral(node.expression));
+                        }
                         return;
                     } catch (Exception e) {
-                        System.out.println(e.getMessage());
+                        node.setError(e.getMessage());
                     }
                 }
             }
@@ -100,7 +106,7 @@ public class Evaluator implements Transform {
 
     /**
      * Author: Raymond de Bruine
-     * Function:    First loop through variables to check if variable exists. If variable exists, replace value
+     * Function:    First loop through variables to check if variable exists. If variable exists, update value
      * If not exists, add new variable to the linkedlist
      *
      * @param node
@@ -110,7 +116,15 @@ public class Evaluator implements Transform {
         for (int i = 0; i < variableList.getSize(); ++i) {
             if (variableList.get(i).containsKey(node.name.name)) {
                 try {
-                    variableList.get(i).put(node.name.name, getLiteral(node.expression));
+                    if (node.expression instanceof Operation) {
+                        Literal l = handleOperation((Operation) node.expression, new HANLinkedList<>());
+                        System.out.println("literal = " + l.toString());
+                        variableList.get(i).put(node.name.name, l);
+                    } else if (node.expression instanceof VariableReference) {
+                        variableList.get(i).put(node.name.name, getVariableReferenceValue(node.name, new HANLinkedList<>()));
+                    } else {
+                        variableList.get(i).put(node.name.name, getLiteral(node.expression));
+                    }
                     return;
                 } catch (Exception e) {
                     node.setError(e.getMessage());
@@ -125,24 +139,24 @@ public class Evaluator implements Transform {
             HashMap<String, Literal> newVariable = new HashMap<>();
             if (node.expression instanceof VariableReference) {
                 newVariable.put(node.name.name, getVariableReferenceValue((VariableReference) node.expression, new HANLinkedList<>()));
+            } else if (node.expression instanceof Operation) {
+                newVariable.put(node.name.name, handleOperation((Operation) node.expression, new HANLinkedList<>()));
             } else {
                 newVariable.put(node.name.name, getLiteral(node.expression));
             }
             variableList.addFirst(newVariable);
         } catch (Exception e) {
-            System.out.println(e.getMessage());
             node.setError(e.getMessage());
         }
     }
 
-    private ArrayList<ASTNode> evaluateIfStatement(ASTNode parent, IfClause ifClause, IHANLinkedList<IHANLinkedList<HashMap<String, Literal>>> localVariables) throws Exception {
+    private ArrayList<ASTNode> evaluateIfStatement(IfClause ifClause, IHANLinkedList<IHANLinkedList<HashMap<String, Literal>>> localVariables) throws Exception {
         ArrayList<ASTNode> ifClauseBody = new ArrayList<>();
         if (this.checkConditionalExpression(ifClause.conditionalExpression, localVariables)) {
             localVariables.addFirst(new HANLinkedList<>());
             for (ASTNode child : ifClause.body) {
-                System.out.println("gaatie op zn bek?");
                 if (child instanceof IfClause) {
-                    ifClauseBody.addAll(evaluateIfStatement(ifClause, (IfClause) child, localVariables));
+                    ifClauseBody.addAll(evaluateIfStatement((IfClause) child, localVariables));
                 } else if (child instanceof VariableAssignment) {
                     handleLocalvariable((VariableAssignment) child, localVariables);
                 } else {
@@ -153,7 +167,7 @@ public class Evaluator implements Transform {
             localVariables.addFirst(new HANLinkedList<>());
             for (ASTNode child : ifClause.elseClause.body) {
                 if (child instanceof IfClause) {
-                    ifClauseBody.addAll(evaluateIfStatement(ifClause.elseClause, (IfClause) child, localVariables));
+                    ifClauseBody.addAll(evaluateIfStatement((IfClause) child, localVariables));
                 } else if (child instanceof VariableAssignment) {
                     handleLocalvariable((VariableAssignment) child, localVariables);
                 } else {
@@ -197,7 +211,6 @@ public class Evaluator implements Transform {
                     declaration.addChild(this.getVariableReferenceValue((VariableReference) child, localVariables));
                 } else if (child instanceof Operation) {
                     Literal literal = handleOperation((Operation) child, localVariables);
-                    System.out.println("uitslag na het rekenen + " + literal);
                     declaration.addChild(literal);
                 } else {
                     declaration.addChild(this.getChild(child, localVariables));
@@ -218,7 +231,11 @@ public class Evaluator implements Transform {
             boolean lastOperation = false;
             while (!lastOperation) {
                 if (!currentOperation.isNestedOperation()) {
+                    System.out.println("last one als goed is" + currentOperation);
                     if (operationHANStack.isEmpty() || (operationHANStack.peek().lhs != null && operationHANStack.peek().rhs != null)) {
+                        if (currentOperation.rhs instanceof VariableReference) {
+                            currentOperation.setRhs(getVariableReferenceValue((VariableReference) currentOperation.rhs, localVariablesList));
+                        }
                         operationHANStack.push(currentOperation);
                     } else {
                         Literal l = handleOperation(currentOperation, localVariablesList);
@@ -227,7 +244,6 @@ public class Evaluator implements Transform {
                     lastOperation = true;
                 } else {
                     if (currentOperation instanceof MultiplyOperation) {
-                        System.out.println(currentOperation.toString());
                         Literal left;
                         if (currentOperation.lhs instanceof VariableReference) {
                             left = getVariableReferenceValue((VariableReference) currentOperation.lhs, localVariablesList);
@@ -246,14 +262,15 @@ public class Evaluator implements Transform {
                             Operation o = new MultiplyOperation();
                             o.addChild(left);
                             o.addChild(right);
-                            System.out.println(o);
                             Literal l = handleOperation(o, localVariablesList);
                             ((Operation) currentOperation.rhs).setLhs(l);
                             currentOperation = (Operation) currentOperation.rhs;
-                            if (currentOperation instanceof AddOperation) {
-                                operationHANStack.peek().setRhs(new AddOperation());
-                            } else if (currentOperation instanceof SubtractOperation) {
-                                operationHANStack.peek().setRhs(new SubtractOperation());
+                            if (!operationHANStack.isEmpty()) {
+                                if (currentOperation instanceof AddOperation) {
+                                    operationHANStack.peek().setRhs(new AddOperation());
+                                } else if (currentOperation instanceof SubtractOperation) {
+                                    operationHANStack.peek().setRhs(new SubtractOperation());
+                                }
                             }
                         }
                     } else if (currentOperation instanceof AddOperation || currentOperation instanceof SubtractOperation) {
@@ -287,7 +304,7 @@ public class Evaluator implements Transform {
 
             while (!operationHANStack.isEmpty()) {
                 Operation operation = operationHANStack.pop();
-                System.out.println("in dde stack" + operation.toString());
+                System.out.println(operation.toString());
                 if (operation.isNestedOperation()) {
                     operation.setRhs(operationHANStack.peek().lhs);
                     Literal value = handleOperation(operation, localVariablesList);
